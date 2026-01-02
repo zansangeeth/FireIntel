@@ -1,0 +1,65 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>FireIntel</title>
+    <style>
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+    <script src="https://js.arcgis.com/4.34"></script>
+
+    <script type="module">
+        const [esriConfig, Map, MapView, Portal, FeatureLayer] =
+            await $arcgis.import([
+                "@arcgis/core/config.js",
+                "@arcgis/core/Map.js",
+                "@arcgis/core/views/MapView.js",
+                "@arcgis/core/portal/Portal.js",
+                "@arcgis/core/layers/FeatureLayer.js",
+            ])
+
+
+        //   esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurPr1KZomlESVAH1Cdh2gtvyCTA_3UJUvv6kTkiRjF1_oPNRVGg-H2tEfISwDUDuBqHXfwCCb03Qoc5lBaBgqESsLniRM-PIMjFb6kzScf3X8chyI7fSR_SCVgUrF3vrVV3c7aOayV6J8Ujei3X8_7uGBU38Zoj7Ncn2khqLpsUxQoOFB-q9qmKkDFRoEHdpgA1d6l4LE6ZOGoW1PdJnIRUw.AT1_Hj2I69UM" // Scoped to access the item below
+
+    fetch("config.json")
+        .then(r => r.json())
+        .then(config => {
+            esriConfig.apiKey = config.ARCGIS_API_KEY;
+        });
+
+
+        const map = new Map({
+            basemap: "arcgis/topographic",
+        })
+
+        const view = new MapView({
+            container: "viewDiv",
+            map: map,
+            zoom: 3,
+        })
+
+        const parcelsLayer = new FeatureLayer({
+            portalItem: {
+                id: "b8f4033069f141729ffb298b7418b653",
+            },
+        })
+        map.add(parcelsLayer)
+
+    </script>
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+</body>
+
+</html>
