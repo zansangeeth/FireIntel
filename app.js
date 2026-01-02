@@ -263,42 +263,68 @@
 
 // Configuration will be injected by GitHub Actions
 // DO NOT EDIT THESE VALUES MANUALLY
+
+// Configuration injected by GitHub Actions
 const CONFIG = {
     API_KEY: "{{API_KEY}}",
     SERVICE_URL: "{{SERVICE_URL}}",
     ITEM_ID: "{{ITEM_ID}}"
 };
 
-// Log configuration for debugging (will be removed in production)
-console.log("Configuration loaded:", {
-    hasApiKey: !!CONFIG.API_KEY && CONFIG.API_KEY !== "{{API_KEY}}",
-    hasServiceUrl: !!CONFIG.SERVICE_URL && CONFIG.SERVICE_URL !== "{{SERVICE_URL}}",
-    hasItemId: !!CONFIG.ITEM_ID && CONFIG.ITEM_ID !== "{{ITEM_ID}}",
-    apiKeyLength: CONFIG.API_KEY ? CONFIG.API_KEY.length : 0,
-    serviceUrl: CONFIG.SERVICE_URL ? CONFIG.SERVICE_URL.substring(0, 50) + "..." : "Not set"
-});
+// Better debug logging
+console.log("=== DEBUG CONFIG ===");
+console.log("Raw API_KEY value:", CONFIG.API_KEY);
+console.log("Raw SERVICE_URL value:", CONFIG.SERVICE_URL);
+console.log("Raw ITEM_ID value:", CONFIG.ITEM_ID);
+console.log("API Key starts with 'AAK':", CONFIG.API_KEY.startsWith("AAK"));
+console.log("Service URL contains 'arcgis':", CONFIG.SERVICE_URL.includes("arcgis"));
+console.log("=== END DEBUG ===");
 
 require([
     "esri/config",
     "esri/Map",
     "esri/views/MapView",
     "esri/layers/FeatureLayer",
-    "esri/layers/MapImageLayer"
+    "esri/layers/MapImageLayer",
+    "esri/widgets/LayerList",
+    "esri/widgets/Legend"
 ], function(
-    esriConfig, Map, MapView, FeatureLayer, MapImageLayer
+    esriConfig, Map, MapView, FeatureLayer, MapImageLayer,
+    LayerList, Legend
 ) {
     
+    // FIXED: Better detection of injected values
+    const isApiKeyInjected = CONFIG.API_KEY && 
+                            CONFIG.API_KEY !== "{{API_KEY}}" && 
+                            CONFIG.API_KEY.length > 20;
+    
+    const isServiceUrlInjected = CONFIG.SERVICE_URL && 
+                                CONFIG.SERVICE_URL !== "{{SERVICE_URL}}" && 
+                                CONFIG.SERVICE_URL.includes("arcgis");
+    
+    const isItemIdInjected = CONFIG.ITEM_ID && 
+                            CONFIG.ITEM_ID !== "{{ITEM_ID}}" && 
+                            CONFIG.ITEM_ID.length > 5;
+    
+    console.log("=== INJECTION CHECK ===");
+    console.log("isApiKeyInjected:", isApiKeyInjected, "length:", CONFIG.API_KEY.length);
+    console.log("isServiceUrlInjected:", isServiceUrlInjected);
+    console.log("isItemIdInjected:", isItemIdInjected);
+    
     // Check if configuration was properly injected
-    if (CONFIG.API_KEY === "{{API_KEY}}" || CONFIG.API_KEY === "") {
-        console.error("API Key was not injected properly!");
-        document.getElementById("service-info").textContent = 
-            "ERROR: API Key was not configured. Please check GitHub Secrets.";
+    if (!isApiKeyInjected) {
+        console.error("API Key injection check failed!");
+        console.error("API Key value:", CONFIG.API_KEY);
+        document.getElementById("service-info").innerHTML = 
+            "<strong>ERROR: API Key was not configured properly.</strong><br>" +
+            "Please check GitHub Secrets. Value length: " + CONFIG.API_KEY.length;
+        document.getElementById("service-info").style.color = "red";
         return;
     }
     
     // Set API key
     esriConfig.apiKey = CONFIG.API_KEY;
-    console.log("API Key configured, length:", CONFIG.API_KEY.length);
+    console.log("✓ API Key configured successfully");
     
     // Initialize map
     const map = new Map({
@@ -316,59 +342,117 @@ require([
     async function loadService() {
         const infoEl = document.getElementById("service-info");
         
-        // Debug info
-        console.log("Service URL:", CONFIG.SERVICE_URL);
-        console.log("Item ID:", CONFIG.ITEM_ID);
-        
-        if (CONFIG.SERVICE_URL && CONFIG.SERVICE_URL !== "{{SERVICE_URL}}") {
-            console.log("Using Service URL:", CONFIG.SERVICE_URL);
-            infoEl.textContent = "Loading service from URL...";
+        try {
+            let layer = null;
             
-            try {
-                let layer;
+            if (isServiceUrlInjected) {
+                console.log("Loading from Service URL:", CONFIG.SERVICE_URL);
+                infoEl.innerHTML = "Loading service from URL...";
+                
+                // Determine service type
                 if (CONFIG.SERVICE_URL.includes("FeatureServer")) {
+                    console.log("Detected Feature Service");
                     layer = new FeatureLayer({
                         url: CONFIG.SERVICE_URL,
-                        title: "Feature Service"
+                        title: "Feature Service",
+                        outFields: ["*"],
+                        popupTemplate: {
+                            title: "{Name}",
+                            content: "Loading attributes..."
+                        }
                     });
                 } else if (CONFIG.SERVICE_URL.includes("MapServer")) {
+                    console.log("Detected Map Service");
                     layer = new MapImageLayer({
                         url: CONFIG.SERVICE_URL,
                         title: "Map Service"
                     });
-                }
-                
-                if (layer) {
-                    map.add(layer);
-                    await layer.load();
-                    infoEl.textContent = "✓ Service loaded: " + layer.title;
-                    view.goTo(layer.fullExtent).catch(() => {
-                        console.log("Could not zoom to layer extent");
+                } else {
+                    console.log("Unknown service type, trying FeatureLayer");
+                    layer = new FeatureLayer({
+                        url: CONFIG.SERVICE_URL,
+                        title: "Service"
                     });
                 }
-            } catch (error) {
-                console.error("Error loading service:", error);
-                infoEl.textContent = "Error: " + error.message;
+            } 
+            else if (isItemIdInjected) {
+                console.log("Loading from Item ID:", CONFIG.ITEM_ID);
+                infoEl.innerHTML = "Loading from Item ID...";
+                // Add Item ID logic here if needed
+                infoEl.innerHTML = "Item ID loading not implemented. Using Service URL instead.";
+                return;
+            }
+            else {
+                console.log("No service URL or Item ID provided");
+                infoEl.innerHTML = 
+                    "<span style='color: orange;'>" +
+                    "Note: Only API key is configured.<br>" +
+                    "Add SERVICE_URL or ITEM_ID in GitHub Secrets to load a specific service." +
+                    "</span>";
+                return;
             }
             
-        } else if (CONFIG.ITEM_ID && CONFIG.ITEM_ID !== "{{ITEM_ID}}") {
-            console.log("Using Item ID:", CONFIG.ITEM_ID);
-            infoEl.textContent = "Loading service from Item ID...";
-            // Add item ID loading logic here
+            if (layer) {
+                console.log("Adding layer to map...");
+                map.add(layer);
+                
+                // Wait for layer to load
+                await layer.load();
+                console.log("Layer loaded successfully:", layer.title);
+                
+                // Update UI
+                infoEl.innerHTML = 
+                    "<span style='color: green;'>✓</span> " +
+                    "Successfully loaded: <strong>" + layer.title + "</strong>";
+                
+                // Setup widgets
+                const layerList = new LayerList({
+                    view: view,
+                    container: document.getElementById("layer-list")
+                });
+                
+                const legend = new Legend({
+                    view: view,
+                    container: document.getElementById("legend")
+                });
+                
+                // Try to zoom to layer extent
+                if (layer.fullExtent) {
+                    view.goTo(layer.fullExtent).then(() => {
+                        console.log("Zoomed to layer extent");
+                    }).catch(err => {
+                        console.log("Using default view, could not zoom:", err);
+                    });
+                }
+                
+                // Show layer count if available
+                if (layer.totalFeatures) {
+                    document.getElementById("layer-info").textContent = 
+                        "Features: " + layer.totalFeatures.toLocaleString();
+                }
+                
+            }
             
-        } else {
-            console.log("No service URL or Item ID configured");
-            infoEl.textContent = "Please configure SERVICE_URL or ITEM_ID in GitHub Secrets";
-            infoEl.style.color = "red";
-            infoEl.style.fontWeight = "bold";
+        } catch (error) {
+            console.error("Error loading service:", error);
+            infoEl.innerHTML = 
+                "<span style='color: red;'>✗ Error loading service:</span><br>" +
+                "<code>" + error.message + "</code>";
         }
     }
     
     // Start loading when view is ready
     view.when(() => {
+        console.log("Map view is ready, loading service...");
         loadService();
     }).catch(error => {
         console.error("Map view error:", error);
-        document.getElementById("service-info").textContent = "Error: " + error.message;
+        document.getElementById("service-info").innerHTML = 
+            "<span style='color: red;'>Map Error:</span> " + error.message;
+    });
+    
+    // Handle window resize
+    window.addEventListener("resize", () => {
+        view.resize();
     });
 });
