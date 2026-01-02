@@ -287,47 +287,33 @@ jobs:
           printf '%s' '${{ secrets.ESRI_SERVICE_URL }}' | base64 -w 0 > service_url.b64 || true
           printf '%s' '${{ secrets.ESRI_ITEM_ID }}' | base64 -w 0 > item_id.b64 || true
 
-      - name: Create app.js from Base64-encoded secrets
+      - name: Create config.js from Base64-encoded secrets
         run: |
           API_KEY_B64=$(cat api_key.b64 2>/dev/null || echo '')
           SERVICE_URL_B64=$(cat service_url.b64 2>/dev/null || echo '')
           ITEM_ID_B64=$(cat item_id.b64 2>/dev/null || echo '')
 
-          cat > dist/app.js <<EOF
-
-            const CONFIG_B64 = {
-            API_KEY_B64: "${API_KEY_B64}",
-            SERVICE_URL_B64: "${SERVICE_URL_B64}",
-            ITEM_ID_B64: "${ITEM_ID_B64}"
-            };
-
-            function _b64decode(s){
-            if(!s) return '';
-            if (typeof atob === 'function') return atob(s);
-            try { return Buffer.from(s, 'base64').toString('utf-8'); } catch(e){ return '' }
-            }
-
-            const CONFIG = {
-            API_KEY: _b64decode(CONFIG_B64.API_KEY_B64),
-            SERVICE_URL: _b64decode(CONFIG_B64.SERVICE_URL_B64),
-            ITEM_ID: _b64decode(CONFIG_B64.ITEM_ID_B64)
-            };
-
-            console.log('Config loaded, API key length:', CONFIG.API_KEY?.length || 0);
-
-            // Your app code should follow; minimal init for validation
+          cat > dist/config.js <<EOF
             (function(){
-            if (typeof require === 'function') {
-                // keep compatibility with previous patterns where require() from the ArcGIS loader is used
-                // The rest of your app can use CONFIG.API_KEY, CONFIG.SERVICE_URL, CONFIG.ITEM_ID
+            function _b64decode(s){
+                if(!s) return '';
+                if (typeof atob === 'function') return atob(s);
+                try { return Buffer.from(s, 'base64').toString('utf-8'); } catch(e){ return '' }
             }
+
+            window.CONFIG = {
+                API_KEY: _b64decode("${API_KEY_B64}"),
+                SERVICE_URL: _b64decode("${SERVICE_URL_B64}"),
+                ITEM_ID: _b64decode("${ITEM_ID_B64}")
+            };
             })();
             EOF
 
-                - name: Copy other files
-                    run: |
-                    cp index.html dist/
-                    cp style.css dist/
+      - name: Copy app and other files to dist
+        run: |
+          cp app.js dist/app.js
+          cp index.html dist/
+          cp style.css dist/
                 
                 - name: Validate JavaScript syntax
                     run: |

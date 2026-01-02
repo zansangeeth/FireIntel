@@ -626,24 +626,27 @@
 //     }
 // });
 
-// Configuration will be injected
-const CONFIG = {
+// Use an injected `window.CONFIG` (generated at build-time) if available,
+// otherwise fall back to placeholders. Do not throw — show a warning instead.
+const CONFIG = (typeof window !== 'undefined' && window.CONFIG) ? window.CONFIG : {
     API_KEY: "API_KEY_PLACEHOLDER",
-    SERVICE_URL: "SERVICE_URL_PLACEHOLDER", 
+    SERVICE_URL: "SERVICE_URL_PLACEHOLDER",
     ITEM_ID: "ITEM_ID_PLACEHOLDER"
 };
 
-// Simple check - if placeholders aren't replaced, show error
-if (CONFIG.API_KEY === "API_KEY_PLACEHOLDER") {
+if (!CONFIG.API_KEY || CONFIG.API_KEY === "API_KEY_PLACEHOLDER") {
     document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById("service-info").innerHTML = 
-            '<div style="color: red; padding: 20px; border: 2px solid red;">' +
-            '<h3>Configuration Error</h3>' +
-            '<p>API Key was not properly injected.</p>' +
-            '<p>Check GitHub Actions logs.</p>' +
-            '</div>';
+        const el = document.getElementById("service-info");
+        if (el) {
+            el.innerHTML = 
+                '<div style="color: red; padding: 20px; border: 2px solid red;">' +
+                '<h3>Configuration Warning</h3>' +
+                '<p>API Key was not injected. Map functionality will be limited.</p>' +
+                '<p>Check GitHub Actions logs.</p>' +
+                '</div>';
+        }
     });
-    throw new Error("API Key not configured");
+    console.warn("API Key not configured; proceeding without throwing.");
 }
 
 // Use the API key
