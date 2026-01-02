@@ -314,25 +314,24 @@ jobs:
           cp app.js dist/app.js
           cp index.html dist/
           cp style.css dist/
-                
-                - name: Validate JavaScript syntax
-                    run: |
-                    echo "Validating dist/app.js..."
-                    if node -c dist/app.js; then
-                        echo "✓ JavaScript syntax is valid"
-                    else
-                        echo "✗ JavaScript syntax error"
-                        echo "First 5 lines:"
-                        head -5 dist/app.js
-                        exit 1
-                    fi
-                
-                - name: Create .nojekyll file
-                    run: touch dist/.nojekyll
-                
-                - name: Deploy to GitHub Pages
-                    uses: peaceiris/actions-gh-pages@v3
-                    with:
-                    github_token: ${{ secrets.GITHUB_TOKEN }}
-                    publish_dir: ./dist
-                    force_orphan: true
+      - name: Validate JavaScript syntax
+        run: |
+          echo "Validating dist/app.js..."
+          if node -c dist/app.js; then
+            echo "✓ JavaScript syntax is valid"
+          else
+            echo "✗ JavaScript syntax error"
+            echo "First 5 lines:"
+            head -5 dist/app.js
+            exit 1
+          fi
+
+      - name: Create .nojekyll file
+        run: touch dist/.nojekyll
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          force_orphan: true
