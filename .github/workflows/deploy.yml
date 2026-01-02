@@ -1,0 +1,27 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create config.json from secret
+        run: |
+          echo '{ "ARCGIS_API_KEY": "'${{ secrets.ARCGIS_API_KEY }}'" }' > config.json
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - uses: actions/deploy-pages@v4
