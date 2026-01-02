@@ -1,65 +1,54 @@
-<html>
-
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <title>FireIntel</title>
-    <style>
-        html,
-        body,
-        #viewDiv {
-            padding: 0;
-            margin: 0;
-            height: 100%;
-            width: 100%;
-        }
-    </style>
-
-    <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
-    <script src="https://js.arcgis.com/4.34"></script>
-
-    <script type="module">
-        const [esriConfig, Map, MapView, Portal, FeatureLayer] =
-            await $arcgis.import([
-                "@arcgis/core/config.js",
-                "@arcgis/core/Map.js",
-                "@arcgis/core/views/MapView.js",
-                "@arcgis/core/portal/Portal.js",
-                "@arcgis/core/layers/FeatureLayer.js",
-            ])
-
-
-        //   esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurPr1KZomlESVAH1Cdh2gtvyCTA_3UJUvv6kTkiRjF1_oPNRVGg-H2tEfISwDUDuBqHXfwCCb03Qoc5lBaBgqESsLniRM-PIMjFb6kzScf3X8chyI7fSR_SCVgUrF3vrVV3c7aOayV6J8Ujei3X8_7uGBU38Zoj7Ncn2khqLpsUxQoOFB-q9qmKkDFRoEHdpgA1d6l4LE6ZOGoW1PdJnIRUw.AT1_Hj2I69UM" // Scoped to access the item below
-
-    fetch("config.json")
-        .then(r => r.json())
-        .then(config => {
-            esriConfig.apiKey = config.ARCGIS_API_KEY;
-        });
-
-
-        const map = new Map({
-            basemap: "arcgis/topographic",
-        })
-
-        const view = new MapView({
-            container: "viewDiv",
-            map: map,
-            zoom: 3,
-        })
-
-        const parcelsLayer = new FeatureLayer({
-            portalItem: {
-                id: "b8f4033069f141729ffb298b7418b653",
-            },
-        })
-        map.add(parcelsLayer)
-
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esri Service Visualization</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://js.arcgis.com/4.29/"></script>
 </head>
-
 <body>
-    <div id="viewDiv"></div>
+    <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Loading ArcGIS Map...</p>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1><i class="esri-icon-layers"></i> Esri Service Visualization</h1>
+            <div id="info-panel">
+                <p><span id="service-info">Loading service information...</span></p>
+                <p id="layer-info"></p>
+            </div>
+        </header>
+        
+        <main>
+            <div id="viewDiv"></div>
+            <div id="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="esri-icon-layer-list"></i> Layers</h3>
+                    <div id="layer-list"></div>
+                </div>
+                <div class="sidebar-section">
+                    <h3><i class="esri-icon-legend"></i> Legend</h3>
+                    <div id="legend"></div>
+                </div>
+                <div class="sidebar-section">
+                    <h3><i class="esri-icon-information"></i> Service Info</h3>
+                    <div id="service-details">
+                        <p>URL: <span id="service-url"></span></p>
+                        <p>Type: <span id="service-type"></span></p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Powered by ArcGIS JS API | <span id="map-center"></span> | Zoom: <span id="zoom-level"></span></p>
+        </footer>
+    </div>
+    
+    <script src="app.js"></script>
 </body>
-
 </html>

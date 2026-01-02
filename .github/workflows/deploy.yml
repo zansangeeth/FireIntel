@@ -1,27 +1,55 @@
-name: Deploy site
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Create config.json from secret
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup build directory
+        run: mkdir -p dist
+      
+      - name: Copy source files
         run: |
-          echo '{ "ARCGIS_API_KEY": "'${{ secrets.ARCGIS_API_KEY }}'" }' > config.json
-
-      - uses: actions/upload-pages-artifact@v3
+          cp index.html dist/
+          cp style.css dist/
+          cp app.js dist/
+      
+      - name: Inject secrets into app.js
+        run: |
+          # Replace placeholders with actual values from secrets
+          sed -i "s|\"{{API_KEY}}\"|\"${{ secrets.ESRI_API_KEY }}\"|g" dist/app.js
+          sed -i "s|\"{{SERVICE_URL}}\"|\"${{ secrets.ESRI_SERVICE_URL }}\"|g" dist/app.js
+          sed -i "s|\"{{ITEM_ID}}\"|\"${{ secrets.ESRI_ITEM_ID }}\"|g" dist/app.js
+      
+      - name: Create CNAME file (optional - for custom domain)
+        run: |
+          if [ -n "${{ secrets.CUSTOM_DOMAIN }}" ]; then
+            echo "${{ secrets.CUSTOM_DOMAIN }}" > dist/CNAME
+          fi
+      
+      - name: Create .nojekyll file
+        run: touch dist/.nojekyll
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          path: .
-
-      - uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          force_orphan: true
+          cname: ${{ secrets.CUSTOM_DOMAIN }}
