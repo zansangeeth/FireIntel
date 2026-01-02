@@ -54,6 +54,65 @@
 #           force_orphan: true
 #           cname: ${{ secrets.CUSTOM_DOMAIN }}
 
+# name: Deploy to GitHub Pages
+
+# on:
+#   push:
+#     branches: [ main ]
+#   workflow_dispatch:
+
+# permissions:
+#   contents: write
+#   pages: write
+#   id-token: write
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     environment:
+#       name: github-pages
+    
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+      
+#       - name: Setup build directory
+#         run: mkdir -p dist
+      
+#       - name: Copy source files
+#         run: |
+#           cp index.html dist/
+#           cp style.css dist/
+#           cp app.js dist/
+      
+#       - name: Inject secrets into app.js
+#         run: |
+#           echo "=== Starting secret injection ==="
+#           echo "API Key length: ${#ESRI_API_KEY}"
+#           echo "Service URL: $ESRI_SERVICE_URL"
+          
+#           # Use sed with proper escaping
+#           sed -i "s|\"{{API_KEY}}\"|\"${{ secrets.ESRI_API_KEY }}\"|g" dist/app.js
+#           sed -i "s|\"{{SERVICE_URL}}\"|\"${{ secrets.ESRI_SERVICE_URL }}\"|g" dist/app.js
+#           sed -i "s|\"{{ITEM_ID}}\"|\"${{ secrets.ESRI_ITEM_ID }}\"|g" dist/app.js
+          
+#           echo "=== Verification ==="
+#           echo "First 5 lines of processed app.js:"
+#           head -5 dist/app.js
+#           echo ""
+#           echo "Checking for remaining placeholders:"
+#           grep -n "{{" dist/app.js && echo "Placeholders found!" || echo "✓ All placeholders replaced"
+      
+#       - name: Create .nojekyll file
+#         run: touch dist/.nojekyll
+      
+#       - name: Deploy to GitHub Pages
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: ./dist
+#           force_orphan: true
+
 name: Deploy to GitHub Pages
 
 on:
@@ -76,6 +135,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Debug - Show secret info
+        run: |
+          echo "=== Secret Status ==="
+          echo "API Key exists: ${{ secrets.ESRI_API_KEY != '' }}"
+          echo "API Key first 10 chars: ${{ secrets.ESRI_API_KEY }}"
+          echo "Service URL exists: ${{ secrets.ESRI_SERVICE_URL != '' }}"
+          echo "=== End Debug ==="
+      
       - name: Setup build directory
         run: mkdir -p dist
       
@@ -85,23 +152,42 @@ jobs:
           cp style.css dist/
           cp app.js dist/
       
-      - name: Inject secrets into app.js
+      - name: Create app.js with proper escaping
         run: |
-          echo "=== Starting secret injection ==="
-          echo "API Key length: ${#ESRI_API_KEY}"
-          echo "Service URL: $ESRI_SERVICE_URL"
+          # Use a different approach that handles special characters
+          API_KEY="${{ secrets.ESRI_API_KEY }}"
+          SERVICE_URL="${{ secrets.ESRI_SERVICE_URL }}"
+          ITEM_ID="${{ secrets.ESRI_ITEM_ID }}"
           
-          # Use sed with proper escaping
-          sed -i "s|\"{{API_KEY}}\"|\"${{ secrets.ESRI_API_KEY }}\"|g" dist/app.js
-          sed -i "s|\"{{SERVICE_URL}}\"|\"${{ secrets.ESRI_SERVICE_URL }}\"|g" dist/app.js
-          sed -i "s|\"{{ITEM_ID}}\"|\"${{ secrets.ESRI_ITEM_ID }}\"|g" dist/app.js
+          # Escape special characters for JavaScript string
+          API_KEY_ESCAPED=$(echo "$API_KEY" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\'/g")
+          SERVICE_URL_ESCAPED=$(echo "$SERVICE_URL" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\'/g")
+          
+          # Use awk for safe replacement
+          awk -v api_key="$API_KEY_ESCAPED" \
+              -v service_url="$SERVICE_URL_ESCAPED" \
+              -v item_id="$ITEM_ID" \
+              'BEGIN {
+                # Debug
+                print "Replacing with:"
+                print "API Key length:", length(api_key)
+                print "Service URL:", service_url
+              }
+              {
+                gsub("\"{{API_KEY}}\"", "\"" api_key "\"")
+                gsub("\"{{SERVICE_URL}}\"", "\"" service_url "\"")
+                gsub("\"{{ITEM_ID}}\"", "\"" item_id "\"")
+                print
+              }' dist/app.js > dist/app.js.tmp
+          
+          mv dist/app.js.tmp dist/app.js
           
           echo "=== Verification ==="
-          echo "First 5 lines of processed app.js:"
-          head -5 dist/app.js
+          echo "First 3 lines:"
+          head -3 dist/app.js
           echo ""
-          echo "Checking for remaining placeholders:"
-          grep -n "{{" dist/app.js && echo "Placeholders found!" || echo "✓ All placeholders replaced"
+          echo "Checking API key in output:"
+          grep -o '"AAP[^"]*"' dist/app.js || echo "No API key found in pattern"
       
       - name: Create .nojekyll file
         run: touch dist/.nojekyll
