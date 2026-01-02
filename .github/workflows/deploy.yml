@@ -199,6 +199,66 @@
 #           publish_dir: ./dist
 #           force_orphan: true
 
+# name: Deploy to GitHub Pages
+
+# on:
+#   push:
+#     branches: [ main ]
+
+# permissions:
+#   contents: write
+#   pages: write
+#   id-token: write
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+    
+#     steps:
+#       - uses: actions/checkout@v4
+      
+#       - name: Create build directory
+#         run: mkdir -p dist
+      
+#       - name: Encode secrets to Base64
+#         run: |
+#           # Encode to Base64 to avoid special character issues
+#           echo "${{ secrets.ESRI_API_KEY }}" | base64 -w 0 > api_key.b64
+#           echo "${{ secrets.ESRI_SERVICE_URL }}" | base64 -w 0 > service_url.b64
+#           echo "${{ secrets.ESRI_ITEM_ID }}" | base64 -w 0 > item_id.b64
+      
+#       - name: Create app.js with Base64 values
+#         run: |
+#           API_KEY_B64=$(cat api_key.b64)
+#           SERVICE_URL_B64=$(cat service_url.b64)
+#           ITEM_ID_B64=$(cat item_id.b64)
+          
+#           # Simple replacement
+#           sed "s|\"{{API_KEY_B64}}\"|\"$API_KEY_B64\"|g" app.js > dist/app.js
+#           sed -i "s|\"{{SERVICE_URL_B64}}\"|\"$SERVICE_URL_B64\"|g" dist/app.js
+#           sed -i "s|\"{{ITEM_ID_B64}}\"|\"$ITEM_ID_B64\"|g" dist/app.js
+      
+#       - name: Copy other files
+#         run: |
+#           cp index.html dist/
+#           cp style.css dist/
+      
+#       - name: Verify syntax
+#         run: |
+#           if node -c dist/app.js; then
+#             echo "✓ Syntax valid"
+#           else
+#             echo "✗ Syntax error"
+#             exit 1
+#           fi
+      
+#       - name: Deploy
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: ./dist
+#           force_orphan: true
+
 name: Deploy to GitHub Pages
 
 on:
@@ -215,44 +275,105 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
       
       - name: Create build directory
         run: mkdir -p dist
       
-      - name: Encode secrets to Base64
+      - name: Create app.js with safe string replacement
         run: |
-          # Encode to Base64 to avoid special character issues
-          echo "${{ secrets.ESRI_API_KEY }}" | base64 -w 0 > api_key.b64
-          echo "${{ secrets.ESRI_SERVICE_URL }}" | base64 -w 0 > service_url.b64
-          echo "${{ secrets.ESRI_ITEM_ID }}" | base64 -w 0 > item_id.b64
-      
-      - name: Create app.js with Base64 values
-        run: |
-          API_KEY_B64=$(cat api_key.b64)
-          SERVICE_URL_B64=$(cat service_url.b64)
-          ITEM_ID_B64=$(cat item_id.b64)
+          # Create a clean app.js file
+          cat > dist/app.js << 'EOF'
+          // Configuration injected by GitHub Actions
+          const CONFIG = {
+              API_KEY: '${{ secrets.ESRI_API_KEY }}',
+              SERVICE_URL: '${{ secrets.ESRI_SERVICE_URL }}',
+              ITEM_ID: '${{ secrets.ESRI_ITEM_ID }}'
+          };
           
-          # Simple replacement
-          sed "s|\"{{API_KEY_B64}}\"|\"$API_KEY_B64\"|g" app.js > dist/app.js
-          sed -i "s|\"{{SERVICE_URL_B64}}\"|\"$SERVICE_URL_B64\"|g" dist/app.js
-          sed -i "s|\"{{ITEM_ID_B64}}\"|\"$ITEM_ID_B64\"|g" dist/app.js
-      
-      - name: Copy other files
-        run: |
+          // Debug log
+          console.log('Config loaded, API key length:', CONFIG.API_KEY?.length || 0);
+          
+          require([
+              "esri/config",
+              "esri/Map",
+              "esri/views/MapView",
+              "esri/layers/FeatureLayer"
+          ], function(esriConfig, Map, MapView, FeatureLayer) {
+              
+              // Set API key
+              esriConfig.apiKey = CONFIG.API_KEY;
+              console.log('✓ API Key configured');
+              
+              document.getElementById('service-info').innerHTML = 
+                  '<div style="background: #d4edda; padding: 15px; border-radius: 5px;">' +
+                  '<strong>✓ Configuration Loaded</strong><br>' +
+                  'API Key: ' + (CONFIG.API_KEY ? 'Present (' + CONFIG.API_KEY.length + ' chars)' : 'Missing') + '<br>' +
+                  'Service URL: ' + (CONFIG.SERVICE_URL ? 'Configured' : 'Not configured') +
+                  '</div>';
+              
+              // Initialize map
+              const map = new Map({
+                  basemap: "topo-vector"
+              });
+              
+              const view = new MapView({
+                  container: "viewDiv",
+                  map: map,
+                  center: [-98.5795, 39.8283],
+                  zoom: 4
+              });
+              
+              // Load service if URL exists
+              if (CONFIG.SERVICE_URL && CONFIG.SERVICE_URL.startsWith('http')) {
+                  try {
+                      const layer = new FeatureLayer({
+                          url: CONFIG.SERVICE_URL,
+                          title: "Feature Service"
+                      });
+                      
+                      map.add(layer);
+                      
+                      layer.when(() => {
+                          document.getElementById('service-info').innerHTML = 
+                              '<div style="background: #155724; color: white; padding: 20px; border-radius: 5px;">' +
+                              '<h3>✓ SUCCESS!</h3>' +
+                              '<p>Service loaded: ' + layer.title + '</p>' +
+                              '</div>';
+                      }).catch(error => {
+                          document.getElementById('service-info').innerHTML += 
+                              '<div style="background: #856404; color: white; padding: 10px; margin-top: 10px;">' +
+                              'Service error: ' + error.message +
+                              '</div>';
+                      });
+                  } catch (error) {
+                      console.error('Layer creation error:', error);
+                  }
+              }
+          });
+          EOF
+          
+          # Copy other files
           cp index.html dist/
           cp style.css dist/
       
-      - name: Verify syntax
+      - name: Validate JavaScript syntax
         run: |
+          echo "Validating dist/app.js..."
           if node -c dist/app.js; then
-            echo "✓ Syntax valid"
+            echo "✓ JavaScript syntax is valid"
           else
-            echo "✗ Syntax error"
+            echo "✗ JavaScript syntax error"
+            echo "First 5 lines:"
+            head -5 dist/app.js
             exit 1
           fi
       
-      - name: Deploy
+      - name: Create .nojekyll file
+        run: touch dist/.nojekyll
+      
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

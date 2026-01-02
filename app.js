@@ -583,45 +583,124 @@
 // });
 
 // Configuration - values will be injected as Base64
+// const CONFIG = {
+//     API_KEY: atob("{{API_KEY_B64}}"),
+//     SERVICE_URL: atob("{{SERVICE_URL_B64}}"),
+//     ITEM_ID: atob("{{ITEM_ID_B64}}")
+// };
+
+// console.log("Config loaded successfully");
+
+// require([
+//     "esri/config",
+//     "esri/Map", 
+//     "esri/views/MapView",
+//     "esri/layers/FeatureLayer"
+// ], function(esriConfig, Map, MapView, FeatureLayer) {
+    
+//     // Set API key
+//     esriConfig.apiKey = CONFIG.API_KEY;
+//     console.log("API Key set, length:", CONFIG.API_KEY.length);
+    
+//     // Initialize map
+//     const map = new Map({ basemap: "topo-vector" });
+//     const view = new MapView({
+//         container: "viewDiv",
+//         map: map,
+//         center: [-98.5795, 39.8283],
+//         zoom: 4
+//     });
+    
+//     // Load service if URL exists
+//     if (CONFIG.SERVICE_URL && CONFIG.SERVICE_URL.startsWith("http")) {
+//         const layer = new FeatureLayer({ url: CONFIG.SERVICE_URL });
+//         map.add(layer);
+        
+//         layer.when(() => {
+//             document.getElementById("service-info").innerHTML = 
+//                 "✓ Service loaded: " + layer.title;
+//         }).catch(error => {
+//             document.getElementById("service-info").innerHTML = 
+//                 "Error: " + error.message;
+//         });
+//     }
+// });
+
+// Configuration will be injected
 const CONFIG = {
-    API_KEY: atob("{{API_KEY_B64}}"),
-    SERVICE_URL: atob("{{SERVICE_URL_B64}}"),
-    ITEM_ID: atob("{{ITEM_ID_B64}}")
+    API_KEY: "API_KEY_PLACEHOLDER",
+    SERVICE_URL: "SERVICE_URL_PLACEHOLDER", 
+    ITEM_ID: "ITEM_ID_PLACEHOLDER"
 };
 
-console.log("Config loaded successfully");
+// Simple check - if placeholders aren't replaced, show error
+if (CONFIG.API_KEY === "API_KEY_PLACEHOLDER") {
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById("service-info").innerHTML = 
+            '<div style="color: red; padding: 20px; border: 2px solid red;">' +
+            '<h3>Configuration Error</h3>' +
+            '<p>API Key was not properly injected.</p>' +
+            '<p>Check GitHub Actions logs.</p>' +
+            '</div>';
+    });
+    throw new Error("API Key not configured");
+}
 
+// Use the API key
 require([
     "esri/config",
-    "esri/Map", 
+    "esri/Map",
     "esri/views/MapView",
     "esri/layers/FeatureLayer"
 ], function(esriConfig, Map, MapView, FeatureLayer) {
     
-    // Set API key
-    esriConfig.apiKey = CONFIG.API_KEY;
-    console.log("API Key set, length:", CONFIG.API_KEY.length);
-    
-    // Initialize map
-    const map = new Map({ basemap: "topo-vector" });
-    const view = new MapView({
-        container: "viewDiv",
-        map: map,
-        center: [-98.5795, 39.8283],
-        zoom: 4
-    });
-    
-    // Load service if URL exists
-    if (CONFIG.SERVICE_URL && CONFIG.SERVICE_URL.startsWith("http")) {
-        const layer = new FeatureLayer({ url: CONFIG.SERVICE_URL });
-        map.add(layer);
+    try {
+        esriConfig.apiKey = CONFIG.API_KEY;
+        console.log("API Key set successfully");
         
-        layer.when(() => {
-            document.getElementById("service-info").innerHTML = 
-                "✓ Service loaded: " + layer.title;
-        }).catch(error => {
-            document.getElementById("service-info").innerHTML = 
-                "Error: " + error.message;
+        document.getElementById("service-info").innerHTML = 
+            '<div style="color: green; padding: 10px;">' +
+            '✓ API Key configured (' + CONFIG.API_KEY.length + ' chars)' +
+            '</div>';
+        
+        const map = new Map({
+            basemap: "topo-vector"
         });
+        
+        const view = new MapView({
+            container: "viewDiv",
+            map: map,
+            center: [-98.5795, 39.8283],
+            zoom: 4
+        });
+        
+        // Load service if URL is configured
+        if (CONFIG.SERVICE_URL && CONFIG.SERVICE_URL !== "SERVICE_URL_PLACEHOLDER") {
+            const layer = new FeatureLayer({
+                url: CONFIG.SERVICE_URL,
+                title: "Feature Service"
+            });
+            
+            map.add(layer);
+            
+            layer.when(function() {
+                document.getElementById("service-info").innerHTML = 
+                    '<div style="background: green; color: white; padding: 15px;">' +
+                    '✓ SUCCESS! Service loaded: ' + layer.title +
+                    '</div>';
+            }).catch(function(error) {
+                document.getElementById("service-info").innerHTML += 
+                    '<div style="color: orange; padding: 10px;">' +
+                    'Service error: ' + error.message +
+                    '</div>';
+            });
+        }
+        
+    } catch (error) {
+        console.error("Error:", error);
+        document.getElementById("service-info").innerHTML = 
+            '<div style="color: red; padding: 20px;">' +
+            '✗ Error: ' + error.message +
+            '</div>';
     }
 });
