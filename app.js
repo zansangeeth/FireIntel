@@ -17,11 +17,13 @@ require([
     "esri/widgets/BasemapToggle",
     "esri/widgets/BasemapGallery",
     "esri/WebMap",
-    "esri/portal/Portal"
+    "esri/portal/Portal",
+    "esri/portal/PortalItem"
 ], function(
     esriConfig, Map, MapView, FeatureLayer, MapImageLayer,
     LayerList, Legend, Expand, BasemapToggle, BasemapGallery,
     WebMap, Portal
+    , PortalItem
 ) {
     
     // Configure API key
@@ -68,11 +70,16 @@ require([
                 serviceUrl = CONFIG.SERVICE_URL;
                 
                 if (serviceUrl.includes("FeatureServer")) {
+                    // If a FeatureService root URL was provided, target the first layer
+                    if (!/\/\d+$/.test(serviceUrl)) {
+                        serviceUrl = serviceUrl.replace(/\/+$|\s+$/g, "") + "/0";
+                    }
                     serviceType = "Feature Service";
                     layer = new FeatureLayer({
                         url: serviceUrl,
                         title: "Service Layer",
-                        popupEnabled: true
+                        popupEnabled: true,
+                        outFields: ["*"]
                     });
                 } else if (serviceUrl.includes("MapServer")) {
                     serviceType = "Map Service";
@@ -82,32 +89,33 @@ require([
                     });
                 }
             } else if (CONFIG.ITEM_ID && CONFIG.ITEM_ID !== "{{ITEM_ID}}") {
-                // Load by item ID
-                const portal = new Portal({
-                    apiKey: CONFIG.API_KEY
+                // Load by item ID using PortalItem
+                const portalItem = new PortalItem({
+                    id: CONFIG.ITEM_ID
                 });
-                
-                await portal.load();
-                
-                // Fetch item details
-                const item = await portal.getItemById(CONFIG.ITEM_ID);
-                await item.load();
-                
-                serviceUrl = item.url;
-                serviceType = item.type;
-                
-                if (item.type === "Feature Service") {
+
+                await portalItem.load();
+
+                serviceUrl = portalItem.url;
+                serviceType = portalItem.type;
+
+                if (portalItem.type === "Feature Service" || portalItem.type === "Feature Layer") {
+                    let url = portalItem.url || "";
+                    if (url.includes("FeatureServer") && !/\/\d+$/.test(url)) {
+                        url = url.replace(/\/+$|\s+$/g, "") + "/0";
+                    }
                     layer = new FeatureLayer({
-                        url: item.url + "/0", // Use first layer
-                        title: item.title,
-                        popupEnabled: true
+                        url: url,
+                        title: portalItem.title,
+                        popupEnabled: true,
+                        outFields: ["*"]
                     });
-                } else if (item.type === "Map Service") {
+                } else if (portalItem.type === "Map Service") {
                     layer = new MapImageLayer({
-                        url: item.url,
-                        title: item.title
+                        url: portalItem.url,
+                        title: portalItem.title
                     });
-                } else if (item.type === "Web Map") {
+                } else if (portalItem.type === "Web Map") {
                     // Handle web maps
                     const webmap = new WebMap({
                         portalItem: {
