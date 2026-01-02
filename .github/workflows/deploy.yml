@@ -309,6 +309,26 @@ jobs:
             })();
             EOF
 
+          # Also create an optional script that writes the API key into a cookie (insecure)
+          # This sets a cookie `ESRI_API_KEY` containing the decoded API key.
+          # NOTE: This exposes the secret in the deployed file and is not recommended for production.
+          cat > dist/set_cookie.js <<EOF
+            (function(){
+            function _b64decode(s){
+                if(!s) return '';
+                if (typeof atob === 'function') return atob(s);
+                try { return Buffer.from(s, 'base64').toString('utf-8'); } catch(e){ return '' }
+            }
+            var api = _b64decode("${API_KEY_B64}");
+            if(api){
+                try{
+                // set cookie; Web pages on GitHub Pages are served under HTTPS so Secure flag applies
+                document.cookie = 'ESRI_API_KEY=' + encodeURIComponent(api) + '; path=/; Secure; SameSite=Strict';
+                }catch(e){ /* ignore */ }
+            }
+            })();
+            EOF
+
       - name: Copy app and other files to dist
         run: |
           cp app.js dist/app.js

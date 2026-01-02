@@ -649,6 +649,18 @@ if (!CONFIG.API_KEY || CONFIG.API_KEY === "API_KEY_PLACEHOLDER") {
     console.warn("API Key not configured; proceeding without throwing.");
 }
 
+// Cookie fallback: if a cookie named ESRI_API_KEY exists, use it to override CONFIG.API_KEY
+function _getCookie(name){
+    if (typeof document === 'undefined' || !document.cookie) return '';
+    var m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return m ? decodeURIComponent(m[2]) : '';
+}
+var _cookieApi = _getCookie('ESRI_API_KEY');
+if (_cookieApi) {
+    CONFIG.API_KEY = _cookieApi;
+    console.log('API key loaded from cookie (fallback)');
+}
+
 // Use the API key
 require([
     "esri/config",
@@ -658,13 +670,21 @@ require([
 ], function(esriConfig, Map, MapView, FeatureLayer) {
     
     try {
-        esriConfig.apiKey = CONFIG.API_KEY;
-        console.log("API Key set successfully");
-        
-        document.getElementById("service-info").innerHTML = 
-            '<div style="color: green; padding: 10px;">' +
-            '✓ API Key configured (' + CONFIG.API_KEY.length + ' chars)' +
-            '</div>';
+        if (CONFIG.API_KEY && CONFIG.API_KEY !== 'API_KEY_PLACEHOLDER') {
+            esriConfig.apiKey = CONFIG.API_KEY;
+            console.log('API Key set successfully');
+
+            var infoEl = document.getElementById('service-info');
+            if (infoEl) infoEl.innerHTML = '<div style="color: green; padding: 10px;">' +
+                '✓ API Key configured (' + (CONFIG.API_KEY.length || 'n/a') + ' chars)' +
+                '</div>';
+        } else {
+            console.warn('No API key available to set in esriConfig');
+            var infoEl2 = document.getElementById('service-info');
+            if (infoEl2) infoEl2.innerHTML = '<div style="color: orange; padding: 10px;">' +
+                '⚠️ No API key configured — map features may be limited.' +
+                '</div>';
+        }
         
         const map = new Map({
             basemap: "topo-vector"
