@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esri Service Visualization</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://js.arcgis.com/4.29/"></script>
+</head>
+<body>
+    <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Loading ArcGIS Map...</p>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1><i class="esri-icon-layers"></i>Fire Intel</h1>
+            <div id="info-panel">
+                <p><span id="service-info">Loading service information...</span></p>
+                <p id="layer-info"></p>
+            </div>
+        </header>
+        
+        <main>
+            <div id="viewDiv"></div>
+            <div id="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="esri-icon-layer-list"></i> Layers</h3>
+                    <div id="layer-list"></div>
+                </div>
+                <div class="sidebar-section">
+                    <h3><i class="esri-icon-legend"></i> Legend</h3>
+                    <div id="legend"></div>
+                </div>
+                <div class="sidebar-section">
+                    <h3><i class="esri-icon-information"></i> Service Info</h3>
+                    <div id="service-details">
+                        <p>URL: <span id="service-url"></span></p>
+                        <p>Type: <span id="service-type"></span></p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Powered by ArcGIS JS API | <span id="map-center"></span> | Zoom: <span id="zoom-level"></span></p>
+        </footer>
+    </div>
+    
+    <script src="set_cookie.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
