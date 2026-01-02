@@ -458,50 +458,152 @@
 // });
 
 // Configuration - values injected by GitHub Actions
+// const CONFIG = {
+//     API_KEY: "{{API_KEY}}",
+//     SERVICE_URL: "{{SERVICE_URL}}",
+//     ITEM_ID: "{{ITEM_ID}}"
+// };
+
+// // Just log what we have
+// console.log("API Key injected:", CONFIG.API_KEY.substring(0, 10) + "...");
+// console.log("API Key length:", CONFIG.API_KEY.length);
+// console.log("Service URL:", CONFIG.SERVICE_URL);
+
+// require([
+//     "esri/config",
+//     "esri/Map",
+//     "esri/views/MapView",
+//     "esri/layers/FeatureLayer",
+//     "esri/layers/MapImageLayer",
+//     "esri/widgets/LayerList",
+//     "esri/widgets/Legend"
+// ], function(
+//     esriConfig, Map, MapView, FeatureLayer, MapImageLayer,
+//     LayerList, Legend
+// ) {
+    
+//     // 1. REMOVE ALL INJECTION CHECKS - JUST USE THE VALUES
+//     // 2. Your API key IS being injected (we can see it in the logs)
+    
+//     // Set the API key - NO CHECKS
+//     esriConfig.apiKey = CONFIG.API_KEY;
+//     console.log("✓ API Key set successfully");
+    
+//     // Update UI immediately
+//     document.getElementById("service-info").innerHTML = 
+//         '<div style="background: #d4edda; padding: 10px; border-radius: 5px;">' +
+//         '<strong style="color: #155724;">✓ Configuration Loaded</strong><br>' +
+//         'API Key: ' + CONFIG.API_KEY.substring(0, 6) + '...' + CONFIG.API_KEY.slice(-4) + '<br>' +
+//         'Length: ' + CONFIG.API_KEY.length + ' characters' +
+//         '</div>';
+    
+//     // Initialize map
+//     const map = new Map({
+//         basemap: "topo-vector"
+//     });
+    
+//     const view = new MapView({
+//         container: "viewDiv",
+//         map: map,
+//         center: [-98.5795, 39.8283],
+//         zoom: 4
+//     });
+    
+//     // Load service
+//     async function loadService() {
+//         const infoEl = document.getElementById("service-info");
+        
+//         // Check service URL (simple check, no complex logic)
+//         if (CONFIG.SERVICE_URL && CONFIG.SERVICE_URL.startsWith("http")) {
+//             console.log("Loading service:", CONFIG.SERVICE_URL);
+            
+//             try {
+//                 let layer;
+                
+//                 // Simple URL check
+//                 if (CONFIG.SERVICE_URL.includes("FeatureServer")) {
+//                     layer = new FeatureLayer({
+//                         url: CONFIG.SERVICE_URL,
+//                         title: "Feature Service"
+//                     });
+//                 } else if (CONFIG.SERVICE_URL.includes("MapServer")) {
+//                     layer = new MapImageLayer({
+//                         url: CONFIG.SERVICE_URL,
+//                         title: "Map Service"
+//                     });
+//                 } else {
+//                     // Try as feature layer
+//                     layer = new FeatureLayer({
+//                         url: CONFIG.SERVICE_URL,
+//                         title: "ArcGIS Service"
+//                     });
+//                 }
+                
+//                 map.add(layer);
+//                 await layer.load();
+                
+//                 // Success
+//                 infoEl.innerHTML = 
+//                     '<div style="background: #d4edda; padding: 15px; border-radius: 5px;">' +
+//                     '<strong style="color: #155724; font-size: 1.2em;">✓ SUCCESS!</strong><br><br>' +
+//                     '<strong>Service:</strong> ' + layer.title + '<br>' +
+//                     '<strong>Type:</strong> ' + (layer.type || 'Feature Service') + '<br>' +
+//                     '<strong>Features:</strong> ' + (layer.totalFeatures || 'Unknown') +
+//                     '</div>';
+                
+//                 // Add widgets
+//                 new LayerList({ view: view, container: document.getElementById("layer-list") });
+//                 new Legend({ view: view, container: document.getElementById("legend") });
+                
+//                 // Zoom to extent
+//                 if (layer.fullExtent) {
+//                     view.goTo(layer.fullExtent);
+//                 }
+                
+//             } catch (error) {
+//                 console.error("Error:", error);
+//                 infoEl.innerHTML += 
+//                     '<div style="background: #f8d7da; padding: 10px; border-radius: 5px; margin-top: 10px;">' +
+//                     '<strong>Service Error:</strong> ' + error.message +
+//                     '</div>';
+//             }
+//         } else {
+//             // No service URL
+//             infoEl.innerHTML += 
+//                 '<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px;">' +
+//                 '<strong>Note:</strong> No service URL configured. Map is loaded with API key only.' +
+//                 '</div>';
+//         }
+//     }
+    
+//     // Start when map is ready
+//     view.when(() => {
+//         loadService();
+//     });
+// });
+
+// Configuration - values will be injected as Base64
 const CONFIG = {
-    API_KEY: "{{API_KEY}}",
-    SERVICE_URL: "{{SERVICE_URL}}",
-    ITEM_ID: "{{ITEM_ID}}"
+    API_KEY: atob("{{API_KEY_B64}}"),
+    SERVICE_URL: atob("{{SERVICE_URL_B64}}"),
+    ITEM_ID: atob("{{ITEM_ID_B64}}")
 };
 
-// Just log what we have
-console.log("API Key injected:", CONFIG.API_KEY.substring(0, 10) + "...");
-console.log("API Key length:", CONFIG.API_KEY.length);
-console.log("Service URL:", CONFIG.SERVICE_URL);
+console.log("Config loaded successfully");
 
 require([
     "esri/config",
-    "esri/Map",
+    "esri/Map", 
     "esri/views/MapView",
-    "esri/layers/FeatureLayer",
-    "esri/layers/MapImageLayer",
-    "esri/widgets/LayerList",
-    "esri/widgets/Legend"
-], function(
-    esriConfig, Map, MapView, FeatureLayer, MapImageLayer,
-    LayerList, Legend
-) {
+    "esri/layers/FeatureLayer"
+], function(esriConfig, Map, MapView, FeatureLayer) {
     
-    // 1. REMOVE ALL INJECTION CHECKS - JUST USE THE VALUES
-    // 2. Your API key IS being injected (we can see it in the logs)
-    
-    // Set the API key - NO CHECKS
+    // Set API key
     esriConfig.apiKey = CONFIG.API_KEY;
-    console.log("✓ API Key set successfully");
-    
-    // Update UI immediately
-    document.getElementById("service-info").innerHTML = 
-        '<div style="background: #d4edda; padding: 10px; border-radius: 5px;">' +
-        '<strong style="color: #155724;">✓ Configuration Loaded</strong><br>' +
-        'API Key: ' + CONFIG.API_KEY.substring(0, 6) + '...' + CONFIG.API_KEY.slice(-4) + '<br>' +
-        'Length: ' + CONFIG.API_KEY.length + ' characters' +
-        '</div>';
+    console.log("API Key set, length:", CONFIG.API_KEY.length);
     
     // Initialize map
-    const map = new Map({
-        basemap: "topo-vector"
-    });
-    
+    const map = new Map({ basemap: "topo-vector" });
     const view = new MapView({
         container: "viewDiv",
         map: map,
@@ -509,75 +611,17 @@ require([
         zoom: 4
     });
     
-    // Load service
-    async function loadService() {
-        const infoEl = document.getElementById("service-info");
+    // Load service if URL exists
+    if (CONFIG.SERVICE_URL && CONFIG.SERVICE_URL.startsWith("http")) {
+        const layer = new FeatureLayer({ url: CONFIG.SERVICE_URL });
+        map.add(layer);
         
-        // Check service URL (simple check, no complex logic)
-        if (CONFIG.SERVICE_URL && CONFIG.SERVICE_URL.startsWith("http")) {
-            console.log("Loading service:", CONFIG.SERVICE_URL);
-            
-            try {
-                let layer;
-                
-                // Simple URL check
-                if (CONFIG.SERVICE_URL.includes("FeatureServer")) {
-                    layer = new FeatureLayer({
-                        url: CONFIG.SERVICE_URL,
-                        title: "Feature Service"
-                    });
-                } else if (CONFIG.SERVICE_URL.includes("MapServer")) {
-                    layer = new MapImageLayer({
-                        url: CONFIG.SERVICE_URL,
-                        title: "Map Service"
-                    });
-                } else {
-                    // Try as feature layer
-                    layer = new FeatureLayer({
-                        url: CONFIG.SERVICE_URL,
-                        title: "ArcGIS Service"
-                    });
-                }
-                
-                map.add(layer);
-                await layer.load();
-                
-                // Success
-                infoEl.innerHTML = 
-                    '<div style="background: #d4edda; padding: 15px; border-radius: 5px;">' +
-                    '<strong style="color: #155724; font-size: 1.2em;">✓ SUCCESS!</strong><br><br>' +
-                    '<strong>Service:</strong> ' + layer.title + '<br>' +
-                    '<strong>Type:</strong> ' + (layer.type || 'Feature Service') + '<br>' +
-                    '<strong>Features:</strong> ' + (layer.totalFeatures || 'Unknown') +
-                    '</div>';
-                
-                // Add widgets
-                new LayerList({ view: view, container: document.getElementById("layer-list") });
-                new Legend({ view: view, container: document.getElementById("legend") });
-                
-                // Zoom to extent
-                if (layer.fullExtent) {
-                    view.goTo(layer.fullExtent);
-                }
-                
-            } catch (error) {
-                console.error("Error:", error);
-                infoEl.innerHTML += 
-                    '<div style="background: #f8d7da; padding: 10px; border-radius: 5px; margin-top: 10px;">' +
-                    '<strong>Service Error:</strong> ' + error.message +
-                    '</div>';
-            }
-        } else {
-            // No service URL
-            infoEl.innerHTML += 
-                '<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px;">' +
-                '<strong>Note:</strong> No service URL configured. Map is loaded with API key only.' +
-                '</div>';
-        }
+        layer.when(() => {
+            document.getElementById("service-info").innerHTML = 
+                "✓ Service loaded: " + layer.title;
+        }).catch(error => {
+            document.getElementById("service-info").innerHTML = 
+                "Error: " + error.message;
+        });
     }
-    
-    // Start when map is ready
-    view.when(() => {
-        loadService();
-    });
 });

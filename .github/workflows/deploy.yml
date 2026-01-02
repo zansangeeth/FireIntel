@@ -113,12 +113,97 @@
 #           publish_dir: ./dist
 #           force_orphan: true
 
+# name: Deploy to GitHub Pages
+
+# on:
+#   push:
+#     branches: [ main ]
+#   workflow_dispatch:
+
+# permissions:
+#   contents: write
+#   pages: write
+#   id-token: write
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     environment:
+#       name: github-pages
+    
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+      
+#       - name: Debug - Show secret info
+#         run: |
+#           echo "=== Secret Status ==="
+#           echo "API Key exists: ${{ secrets.ESRI_API_KEY != '' }}"
+#           echo "API Key first 10 chars: ${{ secrets.ESRI_API_KEY }}"
+#           echo "Service URL exists: ${{ secrets.ESRI_SERVICE_URL != '' }}"
+#           echo "=== End Debug ==="
+      
+#       - name: Setup build directory
+#         run: mkdir -p dist
+      
+#       - name: Copy source files
+#         run: |
+#           cp index.html dist/
+#           cp style.css dist/
+#           cp app.js dist/
+      
+#       - name: Create app.js with proper escaping
+#         run: |
+#           # Use a different approach that handles special characters
+#           API_KEY="${{ secrets.ESRI_API_KEY }}"
+#           SERVICE_URL="${{ secrets.ESRI_SERVICE_URL }}"
+#           ITEM_ID="${{ secrets.ESRI_ITEM_ID }}"
+          
+#           # Escape special characters for JavaScript string
+#           API_KEY_ESCAPED=$(echo "$API_KEY" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\'/g")
+#           SERVICE_URL_ESCAPED=$(echo "$SERVICE_URL" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\'/g")
+          
+#           # Use awk for safe replacement
+#           awk -v api_key="$API_KEY_ESCAPED" \
+#               -v service_url="$SERVICE_URL_ESCAPED" \
+#               -v item_id="$ITEM_ID" \
+#               'BEGIN {
+#                 # Debug
+#                 print "Replacing with:"
+#                 print "API Key length:", length(api_key)
+#                 print "Service URL:", service_url
+#               }
+#               {
+#                 gsub("\"{{API_KEY}}\"", "\"" api_key "\"")
+#                 gsub("\"{{SERVICE_URL}}\"", "\"" service_url "\"")
+#                 gsub("\"{{ITEM_ID}}\"", "\"" item_id "\"")
+#                 print
+#               }' dist/app.js > dist/app.js.tmp
+          
+#           mv dist/app.js.tmp dist/app.js
+          
+#           echo "=== Verification ==="
+#           echo "First 3 lines:"
+#           head -3 dist/app.js
+#           echo ""
+#           echo "Checking API key in output:"
+#           grep -o '"AAP[^"]*"' dist/app.js || echo "No API key found in pattern"
+      
+#       - name: Create .nojekyll file
+#         run: touch dist/.nojekyll
+      
+#       - name: Deploy to GitHub Pages
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: ./dist
+#           force_orphan: true
+
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -128,71 +213,46 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
-      - name: Debug - Show secret info
-        run: |
-          echo "=== Secret Status ==="
-          echo "API Key exists: ${{ secrets.ESRI_API_KEY != '' }}"
-          echo "API Key first 10 chars: ${{ secrets.ESRI_API_KEY }}"
-          echo "Service URL exists: ${{ secrets.ESRI_SERVICE_URL != '' }}"
-          echo "=== End Debug ==="
-      
-      - name: Setup build directory
+      - name: Create build directory
         run: mkdir -p dist
       
-      - name: Copy source files
+      - name: Encode secrets to Base64
+        run: |
+          # Encode to Base64 to avoid special character issues
+          echo "${{ secrets.ESRI_API_KEY }}" | base64 -w 0 > api_key.b64
+          echo "${{ secrets.ESRI_SERVICE_URL }}" | base64 -w 0 > service_url.b64
+          echo "${{ secrets.ESRI_ITEM_ID }}" | base64 -w 0 > item_id.b64
+      
+      - name: Create app.js with Base64 values
+        run: |
+          API_KEY_B64=$(cat api_key.b64)
+          SERVICE_URL_B64=$(cat service_url.b64)
+          ITEM_ID_B64=$(cat item_id.b64)
+          
+          # Simple replacement
+          sed "s|\"{{API_KEY_B64}}\"|\"$API_KEY_B64\"|g" app.js > dist/app.js
+          sed -i "s|\"{{SERVICE_URL_B64}}\"|\"$SERVICE_URL_B64\"|g" dist/app.js
+          sed -i "s|\"{{ITEM_ID_B64}}\"|\"$ITEM_ID_B64\"|g" dist/app.js
+      
+      - name: Copy other files
         run: |
           cp index.html dist/
           cp style.css dist/
-          cp app.js dist/
       
-      - name: Create app.js with proper escaping
+      - name: Verify syntax
         run: |
-          # Use a different approach that handles special characters
-          API_KEY="${{ secrets.ESRI_API_KEY }}"
-          SERVICE_URL="${{ secrets.ESRI_SERVICE_URL }}"
-          ITEM_ID="${{ secrets.ESRI_ITEM_ID }}"
-          
-          # Escape special characters for JavaScript string
-          API_KEY_ESCAPED=$(echo "$API_KEY" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\'/g")
-          SERVICE_URL_ESCAPED=$(echo "$SERVICE_URL" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed "s/'/\\'/g")
-          
-          # Use awk for safe replacement
-          awk -v api_key="$API_KEY_ESCAPED" \
-              -v service_url="$SERVICE_URL_ESCAPED" \
-              -v item_id="$ITEM_ID" \
-              'BEGIN {
-                # Debug
-                print "Replacing with:"
-                print "API Key length:", length(api_key)
-                print "Service URL:", service_url
-              }
-              {
-                gsub("\"{{API_KEY}}\"", "\"" api_key "\"")
-                gsub("\"{{SERVICE_URL}}\"", "\"" service_url "\"")
-                gsub("\"{{ITEM_ID}}\"", "\"" item_id "\"")
-                print
-              }' dist/app.js > dist/app.js.tmp
-          
-          mv dist/app.js.tmp dist/app.js
-          
-          echo "=== Verification ==="
-          echo "First 3 lines:"
-          head -3 dist/app.js
-          echo ""
-          echo "Checking API key in output:"
-          grep -o '"AAP[^"]*"' dist/app.js || echo "No API key found in pattern"
+          if node -c dist/app.js; then
+            echo "✓ Syntax valid"
+          else
+            echo "✗ Syntax error"
+            exit 1
+          fi
       
-      - name: Create .nojekyll file
-        run: touch dist/.nojekyll
-      
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
