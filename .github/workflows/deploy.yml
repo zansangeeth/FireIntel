@@ -329,6 +329,16 @@ jobs:
             })();
             EOF
 
+                  - name: Verify decoded API key length (non-sensitive)
+                    run: |
+                      if [ -f api_key.b64 ]; then
+                        LEN=$(base64 --decode api_key.b64 | wc -c)
+                        echo "Decoded API key length: $LEN"
+                      else
+                        echo "api_key.b64 not found"
+                        exit 1
+                      fi
+
       - name: Copy app and other files to dist
         run: |
           cp app.js dist/app.js
